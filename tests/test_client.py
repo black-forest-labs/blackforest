@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import base64
 import os
 
@@ -8,6 +9,10 @@ from blackforest.types.general.client_config import ClientConfig
 
 BFL_API_KEY = os.getenv("BFL_API_KEY", "test-key")
 os.environ["BFL_ENV"] = "dev"  # Set environment to dev mode for testing
+=======
+import pytest
+from bfl import BFLClient, BFLError
+>>>>>>> 9a8347f (Add first structure)
 
 def test_client_initialization():
     client = BFLClient(api_key="test-key")
@@ -22,6 +27,7 @@ def test_client_custom_base_url():
 def test_client_headers():
     client = BFLClient(api_key="test-key")
     headers = client.session.headers
+<<<<<<< HEAD
     assert headers["X-Key"] == "test-key"
     assert headers["Content-Type"] == "application/json"
 
@@ -255,3 +261,7 @@ def test_generate_flux_pro_depth_model(model, sync):
         assert response.result is not None
     else:
         assert response.id is not None
+=======
+    assert headers["Authorization"] == "Bearer test-key"
+    assert headers["Content-Type"] == "application/json"
+>>>>>>> 9a8347f (Add first structure)
