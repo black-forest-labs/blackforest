@@ -1,17 +1,24 @@
-# BFL - Black Forest Labs API Client
+# BFL Client - Black Forest Labs API Client
 
 A Python client for interacting with the Black Forest Labs API.
 
 ## Installation
 
+You can install the package using either name:
+
 ```bash
-pip install bfl
+pip install bfl_client
+# or
+pip install blackforestlabs
 ```
 
 ## Quick Start
 
 ```python
-from bfl import BFLClient
+# You can import using either name
+from bfl_client import BFLClient
+# or
+from blackforestlabs import BFLClient
 
 # Initialize the client
 client = BFLClient(api_key="your-api-key")
