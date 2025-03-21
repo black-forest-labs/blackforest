@@ -7,16 +7,14 @@ A Python client for interacting with the Black Forest Labs API.
 You can install the package using either name:
 
 ```bash
-pip install bfl_client
-# or
-pip install blackforestlabs
+pip install blackforest
 ```
 
 ## Quick Start
 
 ```python
 # You can import using either name
-from bfl_client import BFLClient
+from blackforest import BFLClient
 # or
 from blackforestlabs import BFLClient
 

@@ -1,5 +1,5 @@
 import pytest
-from bfl_client import BFLClient, BFLError
+from blackforest import BFLClient, BFLError
 
 def test_client_initialization():
     client = BFLClient(api_key="test-key")
