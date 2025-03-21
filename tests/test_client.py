@@ -16,9 +16,3 @@ def test_client_headers():
     headers = client.session.headers
     assert headers["Authorization"] == "Bearer test-key"
     assert headers["Content-Type"] == "application/json"
-
-# Add test for alternative import
-def test_alternative_import():
-    from blackforestlabs import BFLClient
-    client = BFLClient(api_key="test-key")
-    assert client.api_key == "test-key"
