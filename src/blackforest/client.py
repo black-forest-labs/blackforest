@@ -4,6 +4,7 @@ Main client implementation for the BFL API.
 
 import base64
 import os
+import time
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -12,9 +13,11 @@ from urllib.parse import urljoin
 import requests
 
 from blackforest.resources.mapping.model_input_registry import MODEL_INPUT_REGISTRY
-from blackforest.types.general.client import ImageInput, ImageProcessingResponse
+from blackforest.types.general.client_config import ClientConfig
+from blackforest.types.inputs.generic import ImageInput
 from blackforest.types.responses.responses import (
     AsyncResponse,
+    ImageProcessingResponse,
     SyncResponse,
 )
 
@@ -220,24 +223,94 @@ class BFLClient:
             error=response.get("error")
         )
 
+    def get_polling_result(
+        self,
+        task_id: str,
+        config: Optional[ClientConfig] = None,
+    ) -> Dict[str, Any]:
+        """
+        Poll for results until they are ready or until timeout.
+
+        Args:
+            task_id: The ID of the task to poll for
+            config: Optional configuration for polling behavior
+
+        Returns:
+            The final result from the API
+
+        Raises:
+            BFLError: If polling times out or the API request fails
+        """
+        if config is None:
+            config = ClientConfig()
+
+        start_time = time.time()
+        attempts = 0
+
+        while attempts < config.max_retries:
+            print(f"Polling task {task_id} for result. \
+                  Attempt {attempts + 1} of {config.max_retries}")
+            response = self._request("GET", f"/v1/get_result?id={task_id}")
+
+            # Check if the task is complete
+            if response.get("status") in ["Ready", "completed", "failed"]:
+                if response.get("status") == "failed":
+                    raise BFLError(f"Task failed: {response.get('error', \
+                                                                'Unknown error')}")
+                return response.get("result", {})
+
+            # Check for timeout
+            if config.timeout and (time.time() - start_time > config.timeout):
+                raise BFLError(f"Polling timed out after {config.timeout} seconds")
+
+            # Sleep before next attempt
+            time.sleep(config.polling_interval)
+            attempts += 1
+
+        raise BFLError(f"Polling exceeded maximum retries ({config.max_retries})")
+
     def generate(
         self,
         model: str,
         inputs: Dict[str, Any],
-    ) -> Union[AsyncResponse, SyncResponse]:
+        config: Optional[ClientConfig] = None,
+    ) -> Union[AsyncResponse, SyncResponse, Dict[str, Any]]:
         """
         Generate an image using model
 
         Args:
             model: The model to use for generation, eg "flux-pro-1.1"
             inputs: Dictionary containing generation parameters
+            config: Optional configuration for client behavior
 
         Returns:
-            AsyncResponse or SyncResponse containing task ID and polling URL/results
+            AsyncResponse containing task ID and polling URL
+            OR
+            SyncResponse containing actual results
 
         Raises:
             BFLError: If the API request fails
+
+        Examples:
+            >>> from blackforest import BFLClient
+            >>> from blackforest.types.general.client_config import ClientConfig
+            >>> client = BFLClient(api_key="your-api-key")
+            >>>
+            >>> # Asynchronous request (default)
+            >>> response = client.generate("flux-pro-1.1", \
+                                            {"prompt": "a beautiful forest"})
+            >>> print(f"Task ID: {response.id}")
+            >>>
+            >>> # Synchronous request with polling
+            >>> config = ClientConfig(sync=True, timeout=120)
+            >>> result = client.generate("flux-pro-1.1", \
+                                        {"prompt": "a beautiful forest"},
+                                        config)
+            >>> print(f"Image URL: {result.get('image_url')}")
         """
+        if config is None:
+            config = ClientConfig()
+
         # Get the appropriate input type from the registry
         input_cls = self.model_input_registry.get(model)
         if not input_cls:
@@ -249,12 +322,15 @@ class BFLClient:
 
         response = self._request("POST", f"{self.api_version}/{model}",
                                   json=typed_inputs.model_dump(exclude_none=True))
-        if "sync_flag" in inputs and inputs.get("sync_flag"):
-            return SyncResponse(
-                id=response["id"],
-                result=response["result"],
-                error=response["error"]
-            )
+
+        # If sync is True, poll for results
+        if config.sync:
+            try:
+                result = self.get_polling_result(response["id"], config)
+                return result
+            except Exception as e:
+                raise BFLError(f"Error getting synchronous result: {str(e)}")
+
         else:
             return AsyncResponse(
                 id=response["id"],

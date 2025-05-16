@@ -10,15 +10,13 @@ class ImageInput(BaseModel):
     folder_path: Optional[str] = Field(None, description="Path to a folder \
                                        containing images")
     zip_path: Optional[str] = Field(None, description="Path to a zip file \
-                                     containing images")
+                                    containing images")
     image_data: Optional[str] = Field(None, description="Base64 encoded image data")
 
-class ImageProcessingResponse(BaseModel):
-    task_id: str
-    status: str
-    result: Optional[dict] = None
-    error: Optional[str] = None
 
+
+class GenericImageInput(BaseModel):
+    """Base class for image generation inputs."""
     prompt: Optional[str] = Field(
         default="",
         example="ein fantastisches bild",
@@ -26,7 +24,7 @@ class ImageProcessingResponse(BaseModel):
     )
     image_prompt: Optional[str] = Field(
         default=None,
-        description="Optional base64 encoded image to use with Flux Redux.",
+        description="Optional base64 encoded image to use with image models.",
     )
     width: int = Field(
         default=1024,
@@ -44,11 +42,6 @@ class ImageProcessingResponse(BaseModel):
         description="Height of the generated image in pixels. \
             Must be a multiple of 32.",
     )
-    prompt_upsampling: bool = Field(
-        default=False,
-        description="Whether to perform upsampling on the prompt. \
-            If active, automatically modifies the prompt for more creative generation.",
-    )
     seed: Optional[int] = Field(
         default=None,
         description="Optional seed for reproducibility.",
@@ -58,8 +51,8 @@ class ImageProcessingResponse(BaseModel):
         default=2,
         ge=0,
         le=6,
-        description="Tolerance level for input and output moderation. Between 0 and 6, \
-              0 being most strict, 6 being least strict.",
+        description="Tolerance level for input and output moderation. \
+            Between 0 and 6, 0 being most strict, 6 being least strict.",
         example=2,
     )
     output_format: Optional[OutputFormat] = Field(
