@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from blackforest.types.base.output_format import OutputFormat
 
@@ -59,12 +59,17 @@ class GenericImageInput(BaseModel):
         default=OutputFormat.jpeg,
         description="Output format for the generated image. Can be 'jpeg' or 'png'.",
     )
-    webhook_url: Optional[HttpUrl] = Field(
-        default=None, description="URL to receive webhook notifications"
+    prompt_upsampling: bool = Field(
+        default=False,
+        description="Whether to perform upsampling on the prompt. \
+            If active, automatically modifies the prompt for more creative generation.",
     )
-    webhook_secret: Optional[str] = Field(
-        default=None, description="Optional secret for webhook signature verification"
-    )
+    # webhook_url: Optional[HttpUrl] = Field(
+    #     default=None, description="URL to receive webhook notifications"
+    # )
+    # webhook_secret: Optional[str] = Field(
+    #     default=None, description="Optional secret for webhook signature verification"
+    # )
 
     @model_validator(mode="after")
     def validate_images(self):

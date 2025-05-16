@@ -327,7 +327,10 @@ class BFLClient:
         if config.sync:
             try:
                 result = self.get_polling_result(response["id"], config)
-                return result
+                return SyncResponse(
+                    id=response["id"],
+                    result=result
+                )
             except Exception as e:
                 raise BFLError(f"Error getting synchronous result: {str(e)}")
 

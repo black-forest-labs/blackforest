@@ -10,8 +10,6 @@ class AsyncResponse(BaseModel):
 class SyncResponse(BaseModel):
     id: str
     result: dict
-    error: Optional[str] = None
-
 class ImageProcessingResponse(BaseModel):
     task_id: str
     status: str
