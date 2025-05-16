@@ -14,18 +14,11 @@ class ImageInput(BaseModel):
     image_data: Optional[str] = Field(None, description="Base64 encoded image data")
 
 
-
-class GenericImageInput(BaseModel):
-    """Base class for image generation inputs."""
-    prompt: Optional[str] = Field(
-        default="",
-        example="ein fantastisches bild",
-        description="Text prompt for image generation.",
+class GenericAspectRatioInput(BaseModel):
+    aspect_ratio: str = Field(
+        default="16:9", description="Aspect ratio of the image between 21:9 and 9:21"
     )
-    image_prompt: Optional[str] = Field(
-        default=None,
-        description="Optional base64 encoded image to use with image models.",
-    )
+class GenericDimensionInput(BaseModel):
     width: int = Field(
         default=1024,
         ge=256,
@@ -41,6 +34,17 @@ class GenericImageInput(BaseModel):
         multiple_of=32,
         description="Height of the generated image in pixels. \
             Must be a multiple of 32.",
+    )
+class GenericImageInput(BaseModel):
+    """Base class for image generation inputs."""
+    prompt: Optional[str] = Field(
+        default="",
+        example="ein fantastisches bild",
+        description="Text prompt for image generation.",
+    )
+    image_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional base64 encoded image to use with image models.",
     )
     seed: Optional[int] = Field(
         default=None,
