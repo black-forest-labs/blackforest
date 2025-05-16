@@ -1,0 +1,79 @@
+
+from typing import Optional
+
+from pydantic import BaseModel, Field, HttpUrl, model_validator
+
+from blackforest.types.base.output_format import OutputFormat
+
+
+class FluxPro11Inputs(BaseModel):
+    prompt: Optional[str] = Field(
+        default="",
+        example="ein fantastisches bild",
+        description="Text prompt for image generation.",
+    )
+    image_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional base64 encoded image to use with Flux Redux.",
+    )
+    width: int = Field(
+        default=1024,
+        ge=256,
+        le=1440,
+        multiple_of=32,
+        description="Width of the generated image in pixels. \
+            Must be a multiple of 32.",
+    )
+    height: int = Field(
+        default=768,
+        ge=256,
+        le=1440,
+        multiple_of=32,
+        description="Height of the generated image in pixels. \
+            Must be a multiple of 32.",
+    )
+    prompt_upsampling: bool = Field(
+        default=False,
+        description="Whether to perform upsampling on the prompt. \
+            If active, automatically modifies the prompt for more creative generation.",
+    )
+    seed: Optional[int] = Field(
+        default=None,
+        description="Optional seed for reproducibility.",
+        example=42,
+    )
+    safety_tolerance: int = Field(
+        default=2,
+        ge=0,
+        le=6,
+        description="Tolerance level for input and output moderation. \
+            Between 0 and 6, 0 being most strict, 6 being least strict.",
+        example=2,
+    )
+    output_format: Optional[OutputFormat] = Field(
+        default=OutputFormat.jpeg,
+        description="Output format for the generated image. Can be 'jpeg' or 'png'.",
+    )
+    webhook_url: Optional[HttpUrl] = Field(
+        default=None, description="URL to receive webhook notifications"
+    )
+    webhook_secret: Optional[str] = Field(
+        default=None, description="Optional secret for webhook signature verification"
+    )
+
+    @model_validator(mode="after")
+    def validate_images(self):
+        if self.image_prompt is not None:
+            # Basic base64 validation
+            try:
+                import base64
+                base64.b64decode(self.image_prompt)
+            except Exception:
+                raise ValueError("image_prompt must be a valid base64 encoded image")
+        return self
+
+    @model_validator(mode="after")
+    def validate_prompt_or_image(self):
+        if not self.prompt and not self.image_prompt:
+            raise ValueError("Either prompt or image_prompt must be provided")
+        return self

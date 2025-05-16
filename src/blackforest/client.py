@@ -6,11 +6,18 @@ import base64
 import os
 import zipfile
 from pathlib import Path
-from typing import Optional, Dict, Any, Union, List
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
-from .router_types.api_types import ImageInput, ImageProcessingResponse
+
+from blackforest.resources.mapping.model_input_registry import MODEL_INPUT_REGISTRY
+from blackforest.types.general.client import ImageInput, ImageProcessingResponse
+from blackforest.types.responses.responses import (
+    AsyncResponse,
+    SyncResponse,
+)
+
 
 class BFLError(Exception):
     """Base exception for BFL API errors."""
@@ -20,11 +27,14 @@ class BFLClient:
     """
     Main client class for interacting with the Black Forest Labs API.
     """
-    
+
+    # Model to input type mapping registry
+    model_input_registry = MODEL_INPUT_REGISTRY
+    api_version = "v1"
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.us1.bfl.ai",  # Update this
+        base_url: str = "https://api.us1.bfl.ai",
         timeout: int = 30,
     ):
         """
@@ -40,7 +50,7 @@ class BFLClient:
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({
-            'Authorization': f'Bearer {api_key}',
+            'X-Key': api_key,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         })
@@ -70,7 +80,7 @@ class BFLClient:
             BFLError: If the API request fails
         """
         url = urljoin(self.base_url, endpoint)
-        
+
         try:
             response = self.session.request(
                 method=method,
@@ -91,7 +101,7 @@ class BFLClient:
                     error_message = response.text or str(e)
             else:
                 error_message = str(e)
-            
+
             raise BFLError(f"API request failed: {error_message}") from e
 
     def _encode_image(self, image_path: str) -> str:
@@ -104,27 +114,27 @@ class BFLClient:
         folder = Path(folder_path)
         if not folder.exists() or not folder.is_dir():
             raise BFLError(f"Invalid folder path: {folder_path}")
-        
+
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
         encoded_images = []
-        
+
         for file_path in folder.glob('*'):
             if file_path.suffix.lower() in image_extensions:
                 try:
                     encoded_images.append(self._encode_image(str(file_path)))
                 except Exception as e:
                     raise BFLError(f"Error processing image {file_path}: {str(e)}")
-        
+
         return encoded_images
 
     def _process_zip(self, zip_path: str) -> List[str]:
         """Process all images in a zip file and return list of base64 encoded images."""
         if not os.path.exists(zip_path):
             raise BFLError(f"Invalid zip file path: {zip_path}")
-        
+
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
         encoded_images = []
-        
+
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             for file_name in zip_ref.namelist():
                 if Path(file_name).suffix.lower() in image_extensions:
@@ -132,8 +142,9 @@ class BFLClient:
                         with zip_ref.open(file_name) as image_file:
                             encoded_images.append(base64.b64encode(image_file.read()).decode('utf-8'))
                     except Exception as e:
-                        raise BFLError(f"Error processing image {file_name} from zip: {str(e)}")
-        
+                        raise BFLError(f"Error processing image {file_name} \
+                                        from zip: {str(e)}")
+
         return encoded_images
 
     def process_image(
@@ -159,7 +170,7 @@ class BFLClient:
         if isinstance(input_data, str):
             # If input_data is a string, assume it's a path to an image
             input_data = ImageInput(image_path=input_data)
-        
+
         if not isinstance(input_data, ImageInput):
             raise BFLError("input_data must be either a string or an ImageInput object")
 
@@ -183,7 +194,7 @@ class BFLClient:
 
         # Make the API request
         response = self._request("POST", endpoint, json=payload)
-        
+
         return ImageProcessingResponse(
             task_id=response.get("id"),
             status="submitted",
@@ -201,7 +212,7 @@ class BFLClient:
             ImageProcessingResponse containing current status and result if available
         """
         response = self._request("GET", f"/v1/get_result?id={task_id}")
-        
+
         return ImageProcessingResponse(
             task_id=task_id,
             status=response.get("status", "unknown"),
@@ -209,7 +220,43 @@ class BFLClient:
             error=response.get("error")
         )
 
-    # Add your API endpoint methods here
-    # For example:
-    # def get_user(self, user_id: str) -> Dict[str, Any]:
-    #     return self._request("GET", f"/users/{user_id}") 
+    def generate(
+        self,
+        model: str,
+        inputs: Dict[str, Any],
+    ) -> Union[AsyncResponse, SyncResponse]:
+        """
+        Generate an image using model
+
+        Args:
+            model: The model to use for generation, eg "flux-pro-1.1"
+            inputs: Dictionary containing generation parameters
+
+        Returns:
+            AsyncResponse or SyncResponse containing task ID and polling URL/results
+
+        Raises:
+            BFLError: If the API request fails
+        """
+        # Get the appropriate input type from the registry
+        input_cls = self.model_input_registry.get(model)
+        if not input_cls:
+            raise BFLError(f"Model {model} not supported. \
+                           Supported models: {list(self.model_input_registry.keys())}")
+
+        # Convert the inputs to the appropriate type
+        typed_inputs = input_cls(**inputs)
+
+        response = self._request("POST", f"{self.api_version}/{model}",
+                                  json=typed_inputs.model_dump(exclude_none=True))
+        if "sync_flag" in inputs and inputs.get("sync_flag"):
+            return SyncResponse(
+                id=response["id"],
+                result=response["result"],
+                error=response["error"]
+            )
+        else:
+            return AsyncResponse(
+                id=response["id"],
+                polling_url=response["polling_url"]
+            )
