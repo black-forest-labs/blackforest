@@ -1,11 +1,17 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
-from blackforest.types.inputs.generic import GenericImageInput
+from blackforest.types.inputs.generic import (
+    GenericDimensionInput,
+    GenericImageInput,
+    GenericImagePromptInput,
+)
 
 
-class FluxDevInputs(GenericImageInput):\
+class FluxDevInputs(GenericImageInput,
+                    GenericImagePromptInput,
+                    GenericDimensionInput):
 
     steps: Optional[int] = Field(
         default=28,
@@ -32,3 +38,11 @@ class FluxDevInputs(GenericImageInput):\
             Between 0 and 6, 0 being most strict, 6 being least strict.",
         example=2,
     )
+
+
+    @model_validator(mode="after")
+    def validate_prompt_or_image(self):
+        if not self.prompt and not self.image_prompt:
+            raise ValueError("Either prompt or image_prompt must be provided")
+        return self
+

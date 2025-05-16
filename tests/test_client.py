@@ -1,3 +1,4 @@
+import base64
 import os
 
 import pytest
@@ -106,3 +107,43 @@ def test_generate_ultra_model(model, raw, aspect_ratio, sync):
     else:
         assert response.id is not None
         assert response.polling_url is not None
+
+@pytest.mark.parametrize("model", ["flux-pro-1.0-fill"])
+@pytest.mark.parametrize("sync", [False, True])
+def test_generate_flux_pro_fill_model(model, sync):
+    print(f"Using API key: {BFL_API_KEY}")
+    client = BFLClient(api_key=BFL_API_KEY)
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(current_dir, "test_images", "image.png")
+    mask_path = os.path.join(current_dir, "test_images", "mask.png")
+
+    with open(image_path, "rb") as image_file:
+        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+
+    with open(mask_path, "rb") as image_file:
+        mask_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+
+    # Create input as dictionary instead of model instance
+    inputs = {
+        "image": image_base64,
+        "mask": mask_base64,
+        "prompt": "A beautiful landscape with mountains and a lake",
+        "prompt_upsampling": True,
+        "seed": 42,
+        "safety_tolerance": 2,
+    }
+    if model == "flux-pro-1.0-fill":
+        inputs.update({"guidance": 30.0, "steps": 30})
+
+    config = ClientConfig(sync=sync)
+
+    # Call generate with dictionary and config
+    response = client.generate(model, inputs, config)
+    print(f"Response: {response}")
+
+    if sync:
+        assert response.id is not None
+        assert response.result is not None
+    else:
+        assert response.id is not None

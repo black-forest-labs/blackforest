@@ -35,16 +35,29 @@ class GenericDimensionInput(BaseModel):
         description="Height of the generated image in pixels. \
             Must be a multiple of 32.",
     )
+
+class GenericImagePromptInput(BaseModel):
+    image_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional base64 encoded image to use with image models.",
+    )
+
+    @model_validator(mode="after")
+    def validate_images(self):
+        if self.image_prompt is not None:
+            # Basic base64 validation
+            try:
+                import base64
+                base64.b64decode(self.image_prompt)
+            except Exception:
+                raise ValueError("image_prompt must be a valid base64 encoded image")
+        return self
 class GenericImageInput(BaseModel):
     """Base class for image generation inputs."""
     prompt: Optional[str] = Field(
         default="",
         example="ein fantastisches bild",
         description="Text prompt for image generation.",
-    )
-    image_prompt: Optional[str] = Field(
-        default=None,
-        description="Optional base64 encoded image to use with image models.",
     )
     seed: Optional[int] = Field(
         default=None,
@@ -75,19 +88,4 @@ class GenericImageInput(BaseModel):
     #     default=None, description="Optional secret for webhook signature verification"
     # )
 
-    @model_validator(mode="after")
-    def validate_images(self):
-        if self.image_prompt is not None:
-            # Basic base64 validation
-            try:
-                import base64
-                base64.b64decode(self.image_prompt)
-            except Exception:
-                raise ValueError("image_prompt must be a valid base64 encoded image")
-        return self
 
-    @model_validator(mode="after")
-    def validate_prompt_or_image(self):
-        if not self.prompt and not self.image_prompt:
-            raise ValueError("Either prompt or image_prompt must be provided")
-        return self

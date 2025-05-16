@@ -1,10 +1,15 @@
+from pydantic import Field, model_validator
 
-from pydantic import Field
+from blackforest.types.inputs.generic import (
+    GenericAspectRatioInput,
+    GenericImageInput,
+    GenericImagePromptInput,
+)
 
-from blackforest.types.inputs.generic import GenericAspectRatioInput, GenericImageInput
 
-
-class FluxUltraInputs(GenericImageInput, GenericAspectRatioInput):
+class FluxUltraInputs(GenericImageInput,
+                      GenericImagePromptInput,
+                      GenericAspectRatioInput):
     raw: bool = Field(
         default=False,
         description="Generate less processed, more natural-looking images",
@@ -17,3 +22,9 @@ class FluxUltraInputs(GenericImageInput, GenericAspectRatioInput):
         le=1,
         description="Blend between the prompt and the image prompt",
     )
+
+    @model_validator(mode="after")
+    def validate_prompt_or_image(self):
+        if not self.prompt and not self.image_prompt:
+            raise ValueError("Either prompt or image_prompt must be provided")
+        return self
