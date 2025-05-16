@@ -184,3 +184,38 @@ def test_generate_flux_pro_expand_model(model, sync):
         assert response.result is not None
     else:
         assert response.id is not None
+
+@pytest.mark.parametrize("model", ["flux-pro-1.0-canny"])
+@pytest.mark.parametrize("sync", [False, True])
+def test_generate_flux_pro_canny_model(model, sync):
+    print(f"Using API key: {BFL_API_KEY}")
+    client = BFLClient(api_key=BFL_API_KEY)
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(current_dir, "test_images", "image.png")
+
+    with open(image_path, "rb") as image_file:
+        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+
+    # Create input as dictionary instead of model instance
+    inputs = {
+        "control_image": image_base64,
+        "prompt": "A beautiful landscape with mountains and a lake",
+        "steps": 30,
+        "prompt_upsampling": True,
+        "seed": 42,
+        "guidance": 30.0,
+        "safety_tolerance": 2,
+    }
+
+    config = ClientConfig(sync=sync)
+
+    # Call generate with dictionary and config
+    response = client.generate(model, inputs, config)
+    print(f"Response: {response}")
+
+    if sync:
+        assert response.id is not None
+        assert response.result is not None
+    else:
+        assert response.id is not None

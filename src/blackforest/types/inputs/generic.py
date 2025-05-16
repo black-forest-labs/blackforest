@@ -1,5 +1,8 @@
+import base64
+import io
 from typing import Optional
 
+from PIL import Image
 from pydantic import BaseModel, Field, model_validator
 
 from blackforest.types.base.output_format import OutputFormat
@@ -52,6 +55,42 @@ class GenericImagePromptInput(BaseModel):
             except Exception:
                 raise ValueError("image_prompt must be a valid base64 encoded image")
         return self
+
+class GenericImageValidation:
+    @classmethod
+    def _validate_image(cls, image: str, field_name: str = "image"):
+        if not image:
+            raise ValueError(f"{field_name.capitalize()} is required")
+
+        try:
+            if len(image) > 20 * 1024 * 1024:
+                raise ValueError(
+                    f"{field_name.capitalize()} file size exceeds 20MB limit"
+                )
+
+            b64_data = base64.b64decode(image)
+            img = Image.open(io.BytesIO(b64_data))
+
+            if img.width * img.height > 20 * 10**6:
+                raise ValueError(
+                    f"{field_name.capitalize()} dimensions exceed 20 megapixels"
+                )
+
+            # No side smaller than 256
+            if img.width < 256 or img.height < 256:
+                raise ValueError(
+                    f"{field_name.capitalize()} dimensions \
+                        must be at least 256x256 pixels"
+                )
+
+            return img.size, img.mode
+
+        except base64.binascii.Error:
+            raise ValueError(f"Invalid base64 encoding for {field_name}")
+        except ValueError as e:
+            raise e
+        except Exception:
+            raise ValueError(f"Error processing {field_name}")
 class GenericImageInput(BaseModel):
     """Base class for image generation inputs."""
     prompt: Optional[str] = Field(

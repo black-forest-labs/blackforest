@@ -2,10 +2,10 @@ from typing import Optional
 
 from pydantic import Field, model_validator
 
-from blackforest.types.inputs.generic import GenericImageInput
+from blackforest.types.inputs.generic import GenericImageInput, GenericImageValidation
 
 
-class FluxProExpandInputs(GenericImageInput):
+class FluxProExpandInputs(GenericImageInput, GenericImageValidation):
     image: str = Field(
         description="A Base64-encoded string representing \
             the image you wish to expand.",

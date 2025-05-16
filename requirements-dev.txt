@@ -7,3 +7,4 @@ mypy>=1.0.0
 ruff>=0.0.292
 build>=1.0.0
 twine>=4.0.0 
+pillow==10.4.0
