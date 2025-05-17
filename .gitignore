@@ -3,3 +3,5 @@ __pycache__
 .pytest_cache
 .env
 .DS_Store
+dist/
+build/
