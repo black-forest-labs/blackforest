@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# Clean up old builds
+rm -rf build/ dist/ *.egg-info/
+
+# Build the package
+echo "Building package..."
+python -m build
+
+echo "Build complete! Distribution files are in the 'dist/' directory."
+echo "To upload to PyPI, run: python -m twine upload dist/*" 

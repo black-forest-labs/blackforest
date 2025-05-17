@@ -1,0 +1,10 @@
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+isort>=5.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+ruff>=0.0.292
+build>=1.0.0
+twine>=4.0.0 
+pillow==10.4.0

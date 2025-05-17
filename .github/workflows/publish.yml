@@ -1,0 +1,118 @@
+name: Publish Python Package
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type (alpha, beta, release)'
+        required: true
+        default: 'alpha'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - release
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Determine version bump
+      id: version-bump
+      run: |
+        # Default to alpha
+        RELEASE_TYPE="${{ github.event.inputs.release_type || 'alpha' }}"
+        
+        # Extract current version from pyproject.toml
+        CURRENT_VERSION=$(grep 'version =' pyproject.toml | awk -F'"' '{print $2}')
+        
+        # Split version components
+        VERSION_PARTS=(${CURRENT_VERSION//./ })
+        MAJOR=${VERSION_PARTS[0]}
+        MINOR=${VERSION_PARTS[1]}
+        PATCH_FULL=${VERSION_PARTS[2]}
+        
+        # Check if there's a suffix like alpha/beta
+        if [[ $PATCH_FULL == *"-"* ]]; then
+          PATCH=${PATCH_FULL%%-*}
+          SUFFIX=${PATCH_FULL#*-}
+          SUFFIX_NAME=${SUFFIX%.*}
+          SUFFIX_NUM=${SUFFIX#*.}
+        else
+          PATCH=$PATCH_FULL
+          SUFFIX_NAME=""
+          SUFFIX_NUM=0
+        fi
+        
+        # Determine new version
+        if [[ "$RELEASE_TYPE" == "release" ]]; then
+          # For a release, remove any suffix and increment patch if was an alpha/beta before
+          if [[ -n "$SUFFIX_NAME" ]]; then
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          else
+            # If it was already a release, just increment patch
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+        else
+          # For alpha/beta
+          if [[ "$SUFFIX_NAME" == "$RELEASE_TYPE" ]]; then
+            # Same release type, increment suffix number
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH-$RELEASE_TYPE.$((SUFFIX_NUM + 1))"
+          else
+            # Different release type or no suffix before
+            if [[ "$RELEASE_TYPE" == "alpha" ]]; then
+              # For alpha, increment patch and add alpha.1
+              NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))-alpha.1"
+            elif [[ "$RELEASE_TYPE" == "beta" ]]; then
+              # For beta
+              if [[ "$SUFFIX_NAME" == "alpha" ]]; then
+                # If was alpha before, just change to beta with same patch
+                NEW_VERSION="$MAJOR.$MINOR.$PATCH-beta.1"
+              else
+                # If was release before, increment patch and add beta.1
+                NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))-beta.1"
+              fi
+            fi
+          fi
+        fi
+        
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+        echo "New version: $NEW_VERSION"
+
+    - name: Update version in pyproject.toml
+      run: |
+        NEW_VERSION="${{ steps.version-bump.outputs.NEW_VERSION }}"
+        sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+
+    - name: Build package
+      run: python -m build
+      
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        
+    - name: Commit and tag version change
+      run: |
+        NEW_VERSION="${{ steps.version-bump.outputs.NEW_VERSION }}"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "Bump version to $NEW_VERSION"
+        git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
+        git push
+        git push --tags 

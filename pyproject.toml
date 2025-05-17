@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blackforest"
+version = "0.1.0"
+description = "The official Python library for the Black Forest Labs API"
+readme = "README.md"
+authors = [
+    {name = "Black Forest Labs", email = "support@blackforestlabs.ai"},
+]
+requires-python = ">=3.7"
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "requests>=2.31.0",
+    "pydantic>=2.0.0",
+    "pillow==10.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/black-forest-labs/blackforest"
+Source = "https://github.com/black-forest-labs/blackforest"
+Documentation = "https://blackforestlabs.ai/docs"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["blackforest*"]
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ["py37"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py37"
+select = ["E", "F", "W", "I"]
+ignore = []

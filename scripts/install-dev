@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+# First generate the lock file from requirements-dev.txt if it doesn't exist
+if [ ! -f "requirements-dev.lock" ]; then
+    echo "Generating requirements-dev.lock..."
+    pip-compile requirements-dev.txt --output-file requirements-dev.lock || python -m piptools compile requirements-dev.txt --output-file requirements-dev.lock
+fi
+
+# Install all development dependencies from the lock file
+echo "Installing development dependencies from lock file..."
+pip install -r requirements-dev.lock
+
+# Install the package in development mode
+echo "Installing package in development mode..."
+pip install -e .
+
+echo "Installation complete!" 

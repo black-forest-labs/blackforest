@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Exit on error
+set -e
+
+
+# Run ruff formatter check
+echo "Checking code formatting with ruff..."
+ruff check --fix src/ tests/
+
+# Run ruff linter on the codebase
+echo "Running ruff linter..."
+ruff check src/ tests/
+
+echo "Linting completed successfully!"
