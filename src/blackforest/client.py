@@ -303,10 +303,10 @@ class BFLClient:
             >>>
             >>> # Synchronous request with polling
             >>> config = ClientConfig(sync=True, timeout=120)
-            >>> result = client.generate("flux-pro-1.1", \
+            >>> response = client.generate("flux-pro-1.1", \
                                         {"prompt": "a beautiful forest"},
                                         config)
-            >>> print(f"Image URL: {result.get('image_url')}")
+            >>> print(f"Image URL: {response.result['sample']}")
         """
         if config is None:
             config = ClientConfig()
