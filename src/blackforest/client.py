@@ -274,6 +274,7 @@ class BFLClient:
         model: str,
         inputs: Dict[str, Any],
         config: Optional[ClientConfig] = None,
+        track_usage: bool = False,
     ) -> Union[AsyncResponse, SyncResponse, Dict[str, Any]]:
         """
         Generate an image using model
@@ -282,6 +283,7 @@ class BFLClient:
             model: The model to use for generation, eg "flux-pro-1.1"
             inputs: Dictionary containing generation parameters
             config: Optional configuration for client behavior
+            track_usage: Whether to track usage for licensed models (default: False)
 
         Returns:
             AsyncResponse containing task ID and polling URL
@@ -323,6 +325,10 @@ class BFLClient:
         response = self._request("POST", f"{self.api_version}/{model}",
                                   json=typed_inputs.model_dump(exclude_none=True))
 
+        # Track usage if requested
+        if track_usage:
+            self.track_usage_via_api(model, 1)
+
         # If sync is True, poll for results
         if config.sync:
             try:
@@ -339,3 +345,43 @@ class BFLClient:
                 id=response["id"],
                 polling_url=response["polling_url"]
             )
+
+    def track_usage_via_api(self, name: str, n: int = 1) -> None:
+        """
+        Track usage of licensed models via the BFL API for commercial licensing compliance.
+
+        Args:
+            name: The model name to track usage for
+            n: Number of generations to track (default: 1)
+
+        Raises:
+            BFLError: If the API request fails or model is not trackable
+
+        For more information on licensing BFL's models for commercial use and usage reporting,
+        see the README.md or visit: https://dashboard.bfl.ai/licensing/subscriptions?showInstructions=true
+        """
+        model_slug_map = {
+            "flux-dev": "flux-1-dev",
+            "flux-dev-kontext": "flux-1-kontext-dev",
+            "flux-dev-fill": "flux-tools",
+            "flux-dev-depth": "flux-tools",
+            "flux-dev-canny": "flux-tools",
+            "flux-dev-canny-lora": "flux-tools",
+            "flux-dev-depth-lora": "flux-tools",
+            "flux-dev-redux": "flux-tools",
+        }
+
+        if name not in model_slug_map:
+            raise BFLError(f"Cannot track usage for model '{name}'. Model not trackable or name incorrect. "
+                          f"Trackable models: {list(model_slug_map.keys())}")
+
+        model_slug = model_slug_map[name]
+        endpoint = f"/v1/licenses/models/{model_slug}/usage"
+        payload = {"number_of_generations": n}
+
+        try:
+            self._request("POST", endpoint, json=payload)
+            print(f"Successfully tracked usage for {name} with {n} generations")
+        except BFLError as e:
+            raise BFLError(f"Failed to track usage for {name}: {str(e)}")
+q
