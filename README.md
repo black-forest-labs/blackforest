@@ -1,41 +1,32 @@
-<<<<<<< HEAD
 # BFL Client - Black Forest Labs API Client
-=======
-# BFL - Black Forest Labs API Client
->>>>>>> 9a8347f (Add first structure)
 
 A Python client for interacting with the Black Forest Labs API.
 
 ## Installation
 
-<<<<<<< HEAD
 You can install the package using either name:
 
 ```bash
 pip install blackforest
-=======
-```bash
-pip install bfl
->>>>>>> 9a8347f (Add first structure)
 ```
 
 ## Quick Start
 
 ```python
-<<<<<<< HEAD
 # You can import using either name
 from blackforest import BFLClient
 # or
 from blackforestlabs import BFLClient
-=======
-from bfl import BFLClient
->>>>>>> 9a8347f (Add first structure)
+
+import os
+
+# For synchronous API call (great for testing, but please use "production" for async calls, for faster throughput)
+os.environ["BFL_ENV"] = "dev"  
 
 # Initialize the client
 client = BFLClient(api_key="your-api-key")
 
 # Use the client to make API calls
-<<<<<<< HEAD
 inputs = {
         "prompt": "a beautiful sunset over mountains, digital art style",
         "width": 1024,
@@ -43,33 +34,47 @@ inputs = {
         "output_format": "jpeg"
     }
 response = client.generate("flux-pro-1.1", inputs)
-=======
-# Example usage will be added here
->>>>>>> 9a8347f (Add first structure)
+
+# For Flux Kontext Pro with reference images
+kontext_inputs = {
+        "prompt": "A beautiful landscape in the style of the reference image",
+        "input_image": "path/to/reference/image.jpg",  # File path (auto-encoded) or base64
+        "input_image_2": "path/to/another/image.png",  # Optional multiref (experimental)
+        "aspect_ratio": "16:9",  # Between 1:4 and 4:1
+        "output_format": "png",
+        "seed": 42,  # Optional for reproducibility
+        "safety_tolerance": 2,  # 0-6, higher = less strict
+        "prompt_upsampling": True  # Enhanced prompt processing
+    }
+response = client.generate("flux-kontext-pro", kontext_inputs)
 ```
 
 ## Features
 
-<<<<<<< HEAD
 - Official Python interface for Black Forest Labs API
 - Automatic request handling and response parsing
-=======
-- Easy-to-use Python interface for Black Forest Labs API
-- Automatic request handling and response parsing
-- Comprehensive error handling
->>>>>>> 9a8347f (Add first structure)
 - Type hints for better IDE support
+- Support for all Flux models including Flux Kontext Pro with multi-reference capabilities
+
+## Supported Models
+
+- `flux-dev` - Development model
+- `flux-pro` - Professional model 
+- `flux-pro-1.1` - Enhanced professional model
+- `flux-pro-1.1-ultra` - Ultra high-quality model
+- `flux-kontext-pro` - Context-aware model with reference image support and experimental multi-reference capabilities
+- `flux-pro-1.0-fill` - Image inpainting model
+- `flux-pro-1.0-expand` - Image expansion model
+- `flux-pro-1.0-canny` - Canny edge-guided model
+- `flux-pro-1.0-depth` - Depth-guided model
 
 ## Requirements
 
 - Python 3.7+
 - requests>=2.31.0
-<<<<<<< HEAD
 - pydantic>=2.0.0,
 - pillow==10.4.0,
 
-=======
->>>>>>> 9a8347f (Add first structure)
 
 ## License
 

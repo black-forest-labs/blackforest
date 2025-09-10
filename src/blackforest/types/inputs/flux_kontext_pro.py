@@ -1,19 +1,28 @@
 import re
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import Field, HttpUrl, model_validator
 
 from blackforest.types.base.output_format import OutputFormat
+from blackforest.types.inputs.generic import GenericImageInput
 
 
-class FluxKontextProInputs(BaseModel):
+class FluxKontextProInputs(GenericImageInput):
     """Inputs for the Flux Kontext Pro model."""
     
+    # Override prompt to make it required
     prompt: str = Field(
         example="ein fantastisches bild",
         description="Text prompt for image generation.",
     )
 
+    # Override output_format default to png
+    output_format: Optional[OutputFormat] = Field(
+        default=OutputFormat.png,
+        description="Output format for the generated image. Can be 'jpeg' or 'png'.",
+    )
+
+    # Kontext-specific input image fields
     input_image: Optional[str] = Field(
         default=None,
         description="Base64 encoded image or URL to use with Kontext.",
@@ -30,34 +39,10 @@ class FluxKontextProInputs(BaseModel):
         default=None,
         description="Base64 encoded image or URL to use with Kontext. *Experimental Multiref*",
     )
-    seed: Optional[int] = Field(
-        default=None,
-        description="Optional seed for reproducibility.",
-        example=42,
-    )
+
+    # Custom aspect ratio field with specific validation
     aspect_ratio: Optional[str] = Field(
         default=None, description="Aspect ratio of the image between 21:9 and 9:21"
-    )
-    output_format: Optional[OutputFormat] = Field(
-        default=OutputFormat.png,
-        description="Output format for the generated image. Can be 'jpeg' or 'png'.",
-    )
-    webhook_url: Optional[HttpUrl] = Field(
-        default=None, description="URL to receive webhook notifications"
-    )
-    webhook_secret: Optional[str] = Field(
-        default=None, description="Optional secret for webhook signature verification"
-    )
-    prompt_upsampling: bool = Field(
-        default=False,
-        description="Whether to perform upsampling on the prompt. If active, automatically modifies the prompt for more creative generation.",
-    )
-    safety_tolerance: int = Field(
-        default=2,
-        ge=0,
-        le=6,
-        description="Tolerance level for input and output moderation. Between 0 and 6, 0 being most strict, 6 being least strict.",
-        example=2,
     )
 
     @model_validator(mode="after")

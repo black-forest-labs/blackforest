@@ -18,7 +18,7 @@ class BFLClient:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.us1.bfl.ai",  # Update this
+        base_url: str = "https://api.bfl.ai",  # Update this
         timeout: int = 30,
     ):
         """
