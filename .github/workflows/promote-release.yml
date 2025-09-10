@@ -1,0 +1,59 @@
+name: Promote to Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_to_promote:
+        description: 'Pre-release version to promote (e.g., 0.1.2a1)'
+        required: true
+        type: string
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Calculate stable version
+      id: stable-version
+      run: |
+        PRE_VERSION="${{ github.event.inputs.version_to_promote }}"
+        # Remove alpha/beta suffix (e.g., 0.1.2a1 -> 0.1.2)
+        STABLE_VERSION=$(echo "$PRE_VERSION" | sed 's/-.*$//' | sed 's/a[0-9]*$//' | sed 's/b[0-9]*$//')
+        echo "STABLE_VERSION=$STABLE_VERSION" >> $GITHUB_OUTPUT
+        echo "Promoting $PRE_VERSION to stable $STABLE_VERSION"
+    
+    - name: Update version in pyproject.toml
+      run: |
+        STABLE_VERSION="${{ steps.stable-version.outputs.STABLE_VERSION }}"
+        sed -i "s/version = \".*\"/version = \"$STABLE_VERSION\"/" pyproject.toml
+    
+    - name: Build package
+      run: python -m build
+      
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        
+    - name: Commit and tag stable release
+      run: |
+        STABLE_VERSION="${{ steps.stable-version.outputs.STABLE_VERSION }}"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add pyproject.toml
+        git commit -m "Release stable version $STABLE_VERSION [skip ci]"
+        git tag -a "v$STABLE_VERSION" -m "Stable release $STABLE_VERSION"
+        git push
+        git push --tags
