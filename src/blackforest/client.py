@@ -37,7 +37,7 @@ class BFLClient:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.us1.bfl.ai",
+        base_url: str = "https://api.bfl.ai",
         timeout: int = 30,
     ):
         """
@@ -57,6 +57,50 @@ class BFLClient:
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         })
+        # Map to store task_id -> (polling_url, timestamp)
+        self._task_polling_urls = {}
+
+    def _cleanup_expired_polling_urls(self) -> None:
+        """
+        Remove polling URL entries that are older than 30 minutes.
+        """
+        current_time = time.time()
+        expired_keys = []
+        
+        for task_id, (polling_url, timestamp) in self._task_polling_urls.items():
+            # Remove entries older than 30 minutes (1800 seconds)
+            if current_time - timestamp > 1800:
+                expired_keys.append(task_id)
+        
+        for key in expired_keys:
+            del self._task_polling_urls[key]
+
+    def clear_polling_urls(self) -> None:
+        """
+        Manually clear all stored polling URLs.
+        """
+        self._task_polling_urls.clear()
+
+    def _get_polling_endpoint(self, task_id: str) -> str:
+        """
+        Get the appropriate polling endpoint for a task.
+        
+        Args:
+            task_id: The task ID to get the endpoint for
+            
+        Returns:
+            The endpoint (relative path or full URL) to use for polling
+        """
+        # Clean up expired entries
+        self._cleanup_expired_polling_urls()
+        
+        if task_id in self._task_polling_urls:
+            polling_url, _ = self._task_polling_urls[task_id]  # Extract URL from tuple
+            # Return the full polling URL as-is since _request() now handles full URLs
+            return polling_url
+        else:
+            # Fallback to constructed URL
+            return f"/v1/get_result?id={task_id}"
 
     def _request(
         self,
@@ -71,7 +115,7 @@ class BFLClient:
 
         Args:
             method: HTTP method
-            endpoint: API endpoint
+            endpoint: API endpoint (can be a relative path or full URL)
             params: URL parameters
             data: Form data
             json: JSON data
@@ -82,7 +126,11 @@ class BFLClient:
         Raises:
             BFLError: If the API request fails
         """
-        url = urljoin(self.base_url, endpoint)
+        # If endpoint is already a full URL, use it directly
+        if endpoint.startswith(('http://', 'https://')):
+            url = endpoint
+        else:
+            url = urljoin(self.base_url, endpoint)
 
         try:
             response = self.session.request(
@@ -111,6 +159,38 @@ class BFLClient:
         """Encode image file to base64 string."""
         with open(image_path, 'rb') as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
+
+    def _is_file_path(self, value: str) -> bool:
+        """Check if a string is a file path (not base64 or URL)."""
+        if value.startswith(('http://', 'https://')):
+            return False
+        # Check if it looks like base64 (no path separators, mostly alphanumeric with +/=)
+        if '/' not in value and '\\' not in value and len(value) > 100:
+            try:
+                base64.b64decode(value)
+                return False  # It's valid base64
+            except Exception:
+                pass
+        # Check if file exists
+        return os.path.exists(value)
+
+    def _process_kontext_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Process flux-kontext-pro inputs to automatically encode image paths."""
+        processed_inputs = inputs.copy()
+        
+        # Image fields that might need encoding
+        image_fields = ['input_image', 'input_image_2', 'input_image_3', 'input_image_4']
+        
+        for field in image_fields:
+            if field in processed_inputs and processed_inputs[field]:
+                value = processed_inputs[field]
+                if isinstance(value, str) and self._is_file_path(value):
+                    try:
+                        processed_inputs[field] = self._encode_image(value)
+                    except Exception as e:
+                        raise BFLError(f"Error encoding image file '{value}' for field '{field}': {str(e)}")
+        
+        return processed_inputs
 
     def _process_folder(self, folder_path: str) -> List[str]:
         """Process all images in a folder and return list of base64 encoded images."""
@@ -198,8 +278,15 @@ class BFLClient:
         # Make the API request
         response = self._request("POST", endpoint, json=payload)
 
+        # Store the polling URL for this task if available
+        task_id = response.get("id")
+        if task_id and "polling_url" in response:
+            # Clean up expired entries before adding new one
+            self._cleanup_expired_polling_urls()
+            self._task_polling_urls[task_id] = (response["polling_url"], time.time())
+
         return ImageProcessingResponse(
-            task_id=response.get("id"),
+            task_id=task_id,
             status="submitted",
             result=response
         )
@@ -214,7 +301,8 @@ class BFLClient:
         Returns:
             ImageProcessingResponse containing current status and result if available
         """
-        response = self._request("GET", f"/v1/get_result?id={task_id}")
+        endpoint = self._get_polling_endpoint(task_id)
+        response = self._request("GET", endpoint)
 
         return ImageProcessingResponse(
             task_id=task_id,
@@ -250,13 +338,15 @@ class BFLClient:
         while attempts < config.max_retries:
             print(f"Polling task {task_id} for result. \
                   Attempt {attempts + 1} of {config.max_retries}")
-            response = self._request("GET", f"/v1/get_result?id={task_id}")
+            
+            endpoint = self._get_polling_endpoint(task_id)
+            response = self._request("GET", endpoint)
 
             # Check if the task is complete
             if response.get("status") in ["Ready", "completed", "failed"]:
                 if response.get("status") == "failed":
-                    raise BFLError(f"Task failed: {response.get('error', \
-                                                                'Unknown error')}")
+                    error_msg = response.get('error', 'Unknown error')
+                    raise BFLError(f"Task failed: {error_msg}")
                 return response.get("result", {})
 
             # Check for timeout
@@ -319,11 +409,23 @@ class BFLClient:
             raise BFLError(f"Model {model} not supported. \
                            Supported models: {list(self.model_input_registry.keys())}")
 
+        # Process inputs for automatic image encoding if using flux-kontext-pro
+        processed_inputs = inputs
+        if model == "flux-kontext-pro":
+            processed_inputs = self._process_kontext_inputs(inputs)
+
         # Convert the inputs to the appropriate type
-        typed_inputs = input_cls(**inputs)
+        typed_inputs = input_cls(**processed_inputs)
 
         response = self._request("POST", f"{self.api_version}/{model}",
                                   json=typed_inputs.model_dump(exclude_none=True))
+
+        # Store the polling URL for this task
+        task_id = response["id"]
+        if "polling_url" in response:
+            # Clean up expired entries before adding new one
+            self._cleanup_expired_polling_urls()
+            self._task_polling_urls[task_id] = (response["polling_url"], time.time())
 
         # Track usage if requested
         if track_usage:
@@ -332,9 +434,9 @@ class BFLClient:
         # If sync is True, poll for results
         if config.sync:
             try:
-                result = self.get_polling_result(response["id"], config)
+                result = self.get_polling_result(task_id, config)
                 return SyncResponse(
-                    id=response["id"],
+                    id=task_id,
                     result=result
                 )
             except Exception as e:
@@ -342,7 +444,7 @@ class BFLClient:
 
         else:
             return AsyncResponse(
-                id=response["id"],
+                id=task_id,
                 polling_url=response["polling_url"]
             )
 
@@ -384,4 +486,3 @@ class BFLClient:
             print(f"Successfully tracked usage for {name} with {n} generations")
         except BFLError as e:
             raise BFLError(f"Failed to track usage for {name}: {str(e)}")
-q
