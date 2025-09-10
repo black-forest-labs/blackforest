@@ -2,7 +2,7 @@ name: Publish Python Package
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       release_type:
@@ -18,6 +18,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push commits and tags
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
@@ -112,7 +114,7 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add pyproject.toml
-        git commit -m "Bump version to $NEW_VERSION"
+        git commit -m "Bump version to $NEW_VERSION [skip ci]"
         git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
         git push
         git push --tags 
