@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blackforest"
-version = "0.1.3-alpha.1"
+version = "0.1.3"
 description = "The official Python library for the Black Forest Labs API"
 readme = "README.md"
 authors = [
@@ -54,6 +54,6 @@ line_length = 88
 
 [tool.ruff]
 line-length = 88
-target-version = "0.1.3-alpha.1"
+target-version = "0.1.3"
 select = ["E", "F", "W", "I"]
 ignore = []
