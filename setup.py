@@ -8,11 +8,11 @@ setup(
         "requests>=2.31.0",
     ],
     author="Black Forest Labs",
-    author_email="saksham@blackforestlabs.io",  # Update this
+    author_email="saksham@blackforestlabs.ai",
     description="Python client for Black Forest Labs API",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/black-forest-labs/bfl",  # Update this
+    url="https://github.com/black-forest-labs/blackforest",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
