@@ -18,6 +18,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push commits and tags
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
