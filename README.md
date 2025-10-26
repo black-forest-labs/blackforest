@@ -70,10 +70,11 @@ response = client.generate("flux-kontext-pro", kontext_inputs)
 
 ## Requirements
 
-- Python 3.7+
+- Python 3.10+
 - requests>=2.31.0
-- pydantic>=2.0.0,
-- pillow==10.4.0,
+- pydantic>=2.0.0
+- pillow>=10.0.0
+- python-dotenv>=0.21.1
 
 
 ## License
