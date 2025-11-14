@@ -24,7 +24,9 @@ from blackforest.types.responses.responses import (
 
 class BFLError(Exception):
     """Base exception for BFL API errors."""
+
     pass
+
 
 class BFLClient:
     """
@@ -34,6 +36,7 @@ class BFLClient:
     # Model to input type mapping registry
     model_input_registry = MODEL_INPUT_REGISTRY
     api_version = "v1"
+
     def __init__(
         self,
         api_key: str,
@@ -49,14 +52,16 @@ class BFLClient:
             timeout: Request timeout in seconds (optional)
         """
         self.api_key = api_key
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
-        self.session.headers.update({
-            'X-Key': api_key,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        })
+        self.session.headers.update(
+            {
+                "X-Key": api_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
         # Map to store task_id -> (polling_url, timestamp)
         self._task_polling_urls = {}
 
@@ -66,12 +71,12 @@ class BFLClient:
         """
         current_time = time.time()
         expired_keys = []
-        
+
         for task_id, (polling_url, timestamp) in self._task_polling_urls.items():
             # Remove entries older than 30 minutes (1800 seconds)
             if current_time - timestamp > 1800:
                 expired_keys.append(task_id)
-        
+
         for key in expired_keys:
             del self._task_polling_urls[key]
 
@@ -84,16 +89,16 @@ class BFLClient:
     def _get_polling_endpoint(self, task_id: str) -> str:
         """
         Get the appropriate polling endpoint for a task.
-        
+
         Args:
             task_id: The task ID to get the endpoint for
-            
+
         Returns:
             The endpoint (relative path or full URL) to use for polling
         """
         # Clean up expired entries
         self._cleanup_expired_polling_urls()
-        
+
         if task_id in self._task_polling_urls:
             polling_url, _ = self._task_polling_urls[task_id]  # Extract URL from tuple
             # Return the full polling URL as-is since _request() now handles full URLs
@@ -127,7 +132,7 @@ class BFLClient:
             BFLError: If the API request fails
         """
         # If endpoint is already a full URL, use it directly
-        if endpoint.startswith(('http://', 'https://')):
+        if endpoint.startswith(("http://", "https://")):
             url = endpoint
         else:
             url = urljoin(self.base_url, endpoint)
@@ -147,7 +152,7 @@ class BFLClient:
             if response is not None:
                 try:
                     error_data = response.json()
-                    error_message = error_data.get('message', str(e))
+                    error_message = error_data.get("message", str(e))
                 except ValueError:
                     error_message = response.text or str(e)
             else:
@@ -157,15 +162,15 @@ class BFLClient:
 
     def _encode_image(self, image_path: str) -> str:
         """Encode image file to base64 string."""
-        with open(image_path, 'rb') as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode("utf-8")
 
     def _is_file_path(self, value: str) -> bool:
         """Check if a string is a file path (not base64 or URL)."""
-        if value.startswith(('http://', 'https://')):
+        if value.startswith(("http://", "https://")):
             return False
         # Check if it looks like base64 (no path separators, mostly alphanumeric with +/=)
-        if '/' not in value and '\\' not in value and len(value) > 100:
+        if "/" not in value and "\\" not in value and len(value) > 100:
             try:
                 base64.b64decode(value)
                 return False  # It's valid base64
@@ -177,10 +182,15 @@ class BFLClient:
     def _process_kontext_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Process flux-kontext-pro inputs to automatically encode image paths."""
         processed_inputs = inputs.copy()
-        
+
         # Image fields that might need encoding
-        image_fields = ['input_image', 'input_image_2', 'input_image_3', 'input_image_4']
-        
+        image_fields = [
+            "input_image",
+            "input_image_2",
+            "input_image_3",
+            "input_image_4",
+        ]
+
         for field in image_fields:
             if field in processed_inputs and processed_inputs[field]:
                 value = processed_inputs[field]
@@ -188,8 +198,10 @@ class BFLClient:
                     try:
                         processed_inputs[field] = self._encode_image(value)
                     except Exception as e:
-                        raise BFLError(f"Error encoding image file '{value}' for field '{field}': {str(e)}")
-        
+                        raise BFLError(
+                            f"Error encoding image file '{value}' for field '{field}': {str(e)}"
+                        )
+
         return processed_inputs
 
     def _process_folder(self, folder_path: str) -> List[str]:
@@ -198,10 +210,10 @@ class BFLClient:
         if not folder.exists() or not folder.is_dir():
             raise BFLError(f"Invalid folder path: {folder_path}")
 
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+        image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
         encoded_images = []
 
-        for file_path in folder.glob('*'):
+        for file_path in folder.glob("*"):
             if file_path.suffix.lower() in image_extensions:
                 try:
                     encoded_images.append(self._encode_image(str(file_path)))
@@ -215,26 +227,27 @@ class BFLClient:
         if not os.path.exists(zip_path):
             raise BFLError(f"Invalid zip file path: {zip_path}")
 
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+        image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
         encoded_images = []
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             for file_name in zip_ref.namelist():
                 if Path(file_name).suffix.lower() in image_extensions:
                     try:
                         with zip_ref.open(file_name) as image_file:
-                            encoded_images.append(base64.b64encode(image_file.read()).decode('utf-8'))
+                            encoded_images.append(
+                                base64.b64encode(image_file.read()).decode("utf-8")
+                            )
                     except Exception as e:
-                        raise BFLError(f"Error processing image {file_name} \
-                                        from zip: {str(e)}")
+                        raise BFLError(
+                            f"Error processing image {file_name} \
+                                        from zip: {str(e)}"
+                        )
 
         return encoded_images
 
     def process_image(
-        self,
-        input_data: Union[str, ImageInput],
-        endpoint: str = "/v1/image",
-        **kwargs
+        self, input_data: Union[str, ImageInput], endpoint: str = "/v1/image", **kwargs
     ) -> ImageProcessingResponse:
         """
         Process an image or multiple images using the specified endpoint.
@@ -270,10 +283,7 @@ class BFLClient:
             raise BFLError("No valid image input provided")
 
         # Prepare the request payload
-        payload = {
-            "image": image_data,
-            **kwargs
-        }
+        payload = {"image": image_data, **kwargs}
 
         # Make the API request
         response = self._request("POST", endpoint, json=payload)
@@ -308,7 +318,7 @@ class BFLClient:
             task_id=task_id,
             status=response.get("status", "unknown"),
             result=response.get("result"),
-            error=response.get("error")
+            error=response.get("error"),
         )
 
     def get_polling_result(
@@ -336,16 +346,18 @@ class BFLClient:
         attempts = 0
 
         while attempts < config.max_retries:
-            print(f"Polling task {task_id} for result. \
-                  Attempt {attempts + 1} of {config.max_retries}")
-            
+            print(
+                f"Polling task {task_id} for result. \
+                  Attempt {attempts + 1} of {config.max_retries}"
+            )
+
             endpoint = self._get_polling_endpoint(task_id)
             response = self._request("GET", endpoint)
 
             # Check if the task is complete
             if response.get("status") in ["Ready", "completed", "failed"]:
                 if response.get("status") == "failed":
-                    error_msg = response.get('error', 'Unknown error')
+                    error_msg = response.get("error", "Unknown error")
                     raise BFLError(f"Task failed: {error_msg}")
                 return response.get("result", {})
 
@@ -396,9 +408,9 @@ class BFLClient:
             >>> # Synchronous request with polling
             >>> config = ClientConfig(sync=True, timeout=120)
             >>> response = client.generate("flux-pro-1.1", \
-                                        {"prompt": "a beautiful forest"},
+                                        {"prompt": "a beautiful forest"}, \
                                         config)
-            >>> print(f"Image URL: {response.result['sample']}")
+            >>> print(f"Image URL: {response.result.sample}")
         """
         if config is None:
             config = ClientConfig()
@@ -406,8 +418,10 @@ class BFLClient:
         # Get the appropriate input type from the registry
         input_cls = self.model_input_registry.get(model)
         if not input_cls:
-            raise BFLError(f"Model {model} not supported. \
-                           Supported models: {list(self.model_input_registry.keys())}")
+            raise BFLError(
+                f"Model {model} not supported. \
+                           Supported models: {list(self.model_input_registry.keys())}"
+            )
 
         # Process inputs for automatic image encoding if using flux-kontext-pro
         processed_inputs = inputs
@@ -417,8 +431,11 @@ class BFLClient:
         # Convert the inputs to the appropriate type
         typed_inputs = input_cls(**processed_inputs)
 
-        response = self._request("POST", f"{self.api_version}/{model}",
-                                  json=typed_inputs.model_dump(exclude_none=True))
+        response = self._request(
+            "POST",
+            f"{self.api_version}/{model}",
+            json=typed_inputs.model_dump(exclude_none=True),
+        )
 
         # Store the polling URL for this task
         task_id = response["id"]
@@ -435,18 +452,12 @@ class BFLClient:
         if config.sync:
             try:
                 result = self.get_polling_result(task_id, config)
-                return SyncResponse(
-                    id=task_id,
-                    result=result
-                )
+                return SyncResponse(id=task_id, result=result)
             except Exception as e:
                 raise BFLError(f"Error getting synchronous result: {str(e)}")
 
         else:
-            return AsyncResponse(
-                id=task_id,
-                polling_url=response["polling_url"]
-            )
+            return AsyncResponse(id=task_id, polling_url=response["polling_url"])
 
     def track_usage_via_api(self, name: str, n: int = 1) -> None:
         """
@@ -474,8 +485,10 @@ class BFLClient:
         }
 
         if name not in model_slug_map:
-            raise BFLError(f"Cannot track usage for model '{name}'. Model not trackable or name incorrect. "
-                          f"Trackable models: {list(model_slug_map.keys())}")
+            raise BFLError(
+                f"Cannot track usage for model '{name}'. Model not trackable or name incorrect. "
+                f"Trackable models: {list(model_slug_map.keys())}"
+            )
 
         model_slug = model_slug_map[name]
         endpoint = f"/v1/licenses/models/{model_slug}/usage"

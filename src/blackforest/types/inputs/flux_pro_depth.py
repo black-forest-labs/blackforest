@@ -18,7 +18,6 @@ class FluxProDepthInputs(GenericImageInput, GenericImageValidation):
             the control preprocessing step",
     )
 
-
     steps: Optional[int] = Field(
         default=50,
         ge=15,

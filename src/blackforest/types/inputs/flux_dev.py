@@ -9,10 +9,7 @@ from blackforest.types.inputs.generic import (
 )
 
 
-class FluxDevInputs(GenericImageInput,
-                    GenericImagePromptInput,
-                    GenericDimensionInput):
-
+class FluxDevInputs(GenericImageInput, GenericImagePromptInput, GenericDimensionInput):
     steps: Optional[int] = Field(
         default=28,
         ge=1,
@@ -39,10 +36,8 @@ class FluxDevInputs(GenericImageInput,
         example=2,
     )
 
-
     @model_validator(mode="after")
     def validate_prompt_or_image(self):
         if not self.prompt and not self.image_prompt:
             raise ValueError("Either prompt or image_prompt must be provided")
         return self
-

@@ -50,7 +50,6 @@ class FluxProExpandInputs(GenericImageInput, GenericImageValidation):
         description="Guidance strength for the image generation process",
     )
 
-
     @model_validator(mode="after")
     def validate_images(self):
         # Only validate the input image exists and is valid

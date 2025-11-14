@@ -7,9 +7,9 @@ from blackforest.types.inputs.generic import (
 )
 
 
-class FluxUltraInputs(GenericImageInput,
-                      GenericImagePromptInput,
-                      GenericAspectRatioInput):
+class FluxUltraInputs(
+    GenericImageInput, GenericImagePromptInput, GenericAspectRatioInput
+):
     raw: bool = Field(
         default=False,
         description="Generate less processed, more natural-looking images",

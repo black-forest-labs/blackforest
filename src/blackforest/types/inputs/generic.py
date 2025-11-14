@@ -10,10 +10,16 @@ from blackforest.types.base.output_format import OutputFormat
 
 class ImageInput(BaseModel):
     image_path: Optional[str] = Field(None, description="Path to a single image file")
-    folder_path: Optional[str] = Field(None, description="Path to a folder \
-                                       containing images")
-    zip_path: Optional[str] = Field(None, description="Path to a zip file \
-                                    containing images")
+    folder_path: Optional[str] = Field(
+        None,
+        description="Path to a folder \
+                                       containing images",
+    )
+    zip_path: Optional[str] = Field(
+        None,
+        description="Path to a zip file \
+                                    containing images",
+    )
     image_data: Optional[str] = Field(None, description="Base64 encoded image data")
 
 
@@ -21,6 +27,8 @@ class GenericAspectRatioInput(BaseModel):
     aspect_ratio: str = Field(
         default="16:9", description="Aspect ratio of the image between 21:9 and 9:21"
     )
+
+
 class GenericDimensionInput(BaseModel):
     width: int = Field(
         default=1024,
@@ -39,6 +47,7 @@ class GenericDimensionInput(BaseModel):
             Must be a multiple of 32.",
     )
 
+
 class GenericImagePromptInput(BaseModel):
     image_prompt: Optional[str] = Field(
         default=None,
@@ -51,10 +60,12 @@ class GenericImagePromptInput(BaseModel):
             # Basic base64 validation
             try:
                 import base64
+
                 base64.b64decode(self.image_prompt)
             except Exception:
                 raise ValueError("image_prompt must be a valid base64 encoded image")
         return self
+
 
 class GenericImageValidation:
     @classmethod
@@ -91,8 +102,11 @@ class GenericImageValidation:
             raise e
         except Exception:
             raise ValueError(f"Error processing {field_name}")
+
+
 class GenericImageInput(BaseModel):
     """Base class for image generation inputs."""
+
     prompt: Optional[str] = Field(
         default="",
         example="ein fantastisches bild",
@@ -126,5 +140,3 @@ class GenericImageInput(BaseModel):
     # webhook_secret: Optional[str] = Field(
     #     default=None, description="Optional secret for webhook signature verification"
     # )
-
-

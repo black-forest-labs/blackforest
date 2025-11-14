@@ -9,9 +9,7 @@ from blackforest.types.inputs.generic import (
 )
 
 
-class FluxProInputs(GenericImageInput,
-                    GenericImagePromptInput,
-                    GenericDimensionInput):
+class FluxProInputs(GenericImageInput, GenericImagePromptInput, GenericDimensionInput):
     steps: Optional[int] = Field(
         default=40,
         ge=1,
