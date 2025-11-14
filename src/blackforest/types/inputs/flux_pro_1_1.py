@@ -7,9 +7,9 @@ from blackforest.types.inputs.generic import (
 )
 
 
-class FluxPro11Inputs(GenericImageInput,
-                      GenericImagePromptInput,
-                      GenericDimensionInput):
+class FluxPro11Inputs(
+    GenericImageInput, GenericImagePromptInput, GenericDimensionInput
+):
     """Inputs for the Flux Pro 1.1 model."""
 
     @model_validator(mode="after")

@@ -40,7 +40,6 @@ class FluxProCannyInputs(GenericImageInput, GenericImageValidation):
         description="Guidance strength for the image generation process",
     )
 
-
     @model_validator(mode="after")
     def validate_control_image(self):
         if not self.control_image and not self.preprocessed_image:

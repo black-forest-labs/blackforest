@@ -10,23 +10,21 @@ readme = "README.md"
 authors = [
     {name = "Black Forest Labs", email = "support@blackforestlabs.ai"},
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "requests>=2.31.0",
     "pydantic>=2.0.0",
-    "pillow",
+    "pillow>=10.0.0",
     "python-dotenv>=0.21.1",
 ]
 
@@ -47,7 +45,7 @@ include = ["blackforest*"]
 
 [tool.black]
 line-length = 88
-target-version = ["py37"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
@@ -55,11 +53,15 @@ line_length = 88
 
 [tool.ruff]
 line-length = 88
-target-version = "0.1.3"
+target-version = "py310"
 select = ["E", "F", "W", "I"]
 ignore = []
 
+[tool.uv.sources]
+blackforest = { workspace = true }
+
 [dependency-groups]
 dev = [
+    "blackforest",
     "ruff>=0.11.10",
 ]

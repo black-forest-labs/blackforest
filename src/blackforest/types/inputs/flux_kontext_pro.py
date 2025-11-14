@@ -9,7 +9,7 @@ from blackforest.types.inputs.generic import GenericImageInput
 
 class FluxKontextProInputs(GenericImageInput):
     """Inputs for the Flux Kontext Pro model."""
-    
+
     # Override prompt to make it required
     prompt: str = Field(
         example="ein fantastisches bild",
