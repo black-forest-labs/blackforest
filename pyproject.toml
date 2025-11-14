@@ -57,11 +57,7 @@ target-version = "py310"
 select = ["E", "F", "W", "I"]
 ignore = []
 
-[tool.uv.sources]
-blackforest = { workspace = true }
-
 [dependency-groups]
 dev = [
-    "blackforest",
     "ruff>=0.11.10",
 ]
