@@ -179,16 +179,24 @@ class BFLClient:
         # Check if file exists
         return os.path.exists(value)
 
-    def _process_kontext_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """Process flux-kontext-pro inputs to automatically encode image paths."""
+    def _process_multi_image_inputs(
+        self, inputs: Dict[str, Any], max_images: int = 8
+    ) -> Dict[str, Any]:
+        """
+        Process inputs with multiple image fields to automatically encode image paths.
+
+        Args:
+            inputs: Dictionary of input parameters
+            max_images: Maximum number of input images supported (default: 8)
+
+        Returns:
+            Dictionary with file paths converted to base64 encoded images
+        """
         processed_inputs = inputs.copy()
 
-        # Image fields that might need encoding
-        image_fields = [
-            "input_image",
-            "input_image_2",
-            "input_image_3",
-            "input_image_4",
+        # Build list of image fields based on max_images
+        image_fields = ["input_image"] + [
+            f"input_image_{i}" for i in range(2, max_images + 1)
         ]
 
         for field in image_fields:
@@ -411,6 +419,16 @@ class BFLClient:
                                         {"prompt": "a beautiful forest"}, \
                                         config)
             >>> print(f"Image URL: {response.result.sample}")
+            >>>
+            >>> # FLUX 2 Pro with multiple input images (auto-encoding)
+            >>> response = client.generate("flux-2-pro", {
+            ...     "prompt": "combine these images",
+            ...     "input_image": "path/to/image1.jpg",
+            ...     "input_image_2": "path/to/image2.jpg",
+            ...     "width": 1024,
+            ...     "height": 768
+            ... })
+            >>> print(f"Task ID: {response.id}")
         """
         if config is None:
             config = ClientConfig()
@@ -423,10 +441,14 @@ class BFLClient:
                            Supported models: {list(self.model_input_registry.keys())}"
             )
 
-        # Process inputs for automatic image encoding if using flux-kontext-pro
+        # Process inputs for automatic image encoding for models with multiple image support
         processed_inputs = inputs
         if model == "flux-kontext-pro":
-            processed_inputs = self._process_kontext_inputs(inputs)
+            # flux-kontext-pro supports up to 4 input images
+            processed_inputs = self._process_multi_image_inputs(inputs, max_images=4)
+        elif model == "flux-2-pro":
+            # flux-2-pro supports up to 8 input images
+            processed_inputs = self._process_multi_image_inputs(inputs, max_images=8)
 
         # Convert the inputs to the appropriate type
         typed_inputs = input_cls(**processed_inputs)

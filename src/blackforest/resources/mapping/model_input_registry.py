@@ -2,6 +2,7 @@ from blackforest.types.inputs.flux_dev import FluxDevInputs
 from blackforest.types.inputs.flux_kontext_pro import FluxKontextProInputs
 from blackforest.types.inputs.flux_pro import FluxProInputs
 from blackforest.types.inputs.flux_pro_1_1 import FluxPro11Inputs
+from blackforest.types.inputs.flux_pro_2 import FluxPro2Inputs
 from blackforest.types.inputs.flux_pro_canny import FluxProCannyInputs
 from blackforest.types.inputs.flux_pro_depth import FluxProDepthInputs
 from blackforest.types.inputs.flux_pro_expand import FluxProExpandInputs
@@ -18,4 +19,5 @@ MODEL_INPUT_REGISTRY = {
     "flux-pro-1.0-canny": FluxProCannyInputs,
     "flux-pro-1.0-depth": FluxProDepthInputs,
     "flux-kontext-pro": FluxKontextProInputs,
+    "flux-2-pro": FluxPro2Inputs
 }
