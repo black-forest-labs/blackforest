@@ -318,3 +318,34 @@ def test_generate_flux_kontext_pro_model(model, sync):
         assert response.result is not None
     else:
         assert response.id is not None
+
+
+@pytest.mark.parametrize("model", ["flux-2-pro"])
+@pytest.mark.parametrize("sync", [False, True])
+def test_generate_flux_2_pro_model(model, sync):
+    print(f"Using API key: {BFL_API_KEY}")
+    client = BFLClient(api_key=BFL_API_KEY)
+
+    inputs = {
+        "prompt": "A beautiful landscape combining elements from the input images",
+        "input_image": "tests/inputs/test_image_1.jpeg",
+        "input_image_2": "tests/inputs/test_image_2.jpeg",
+        "width": 1024,
+        "height": 768,
+        "output_format": "png",
+        "seed": 42,
+        "safety_tolerance": 2,
+        "prompt_upsampling": True,
+    }
+
+    config = ClientConfig(sync=sync)
+
+    # Call generate with dictionary and config
+    response = client.generate(model, inputs, config)
+    print(f"Response: {response}")
+
+    if sync:
+        assert response.id is not None
+        assert response.result is not None
+    else:
+        assert response.id is not None
