@@ -3,8 +3,8 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "blackforest"
-version = "0.1.4-alpha.1"
+name = "black-forest-labs"
+dynamic = ["version"]
 description = "The official Python library for the Black Forest Labs API"
 readme = "README.md"
 authors = [
@@ -13,32 +13,40 @@ authors = [
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
 ]
 dependencies = [
-    "requests>=2.31.0",
+    "httpx>=0.27.0",
     "pydantic>=2.0.0",
-    "pillow>=10.0.0",
-    "python-dotenv>=0.21.1",
+    "typing-extensions>=4.0.0; python_version < '3.11'",
 ]
+
+[project.optional-dependencies]
+# Pillow is only needed for Result.image and passing PIL images as input.
+images = ["pillow>=10.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/black-forest-labs/blackforest"
 Source = "https://github.com/black-forest-labs/blackforest"
-Documentation = "https://blackforestlabs.ai/docs"
+Documentation = "https://docs.bfl.ai"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[tool.setuptools.dynamic]
+version = {attr = "bfl._version.__version__"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["blackforest*"]
+include = ["bfl*", "blackforestlabs*", "blackforest*"]
 
 [tool.setuptools.package-data]
 "*" = ["py.typed"]
@@ -54,10 +62,19 @@ line_length = 88
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]
 ignore = []
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
     "ruff>=0.11.10",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pillow>=10.0.0",
 ]

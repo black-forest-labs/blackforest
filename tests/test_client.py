@@ -1,320 +1,150 @@
-import base64
-import os
+"""Tests for job lifecycle, result handling, and the high-level client."""
+
+from __future__ import annotations
 
 import pytest
 
-from blackforest import BFLClient
-from blackforest.types.general.client_config import ClientConfig
-
-BFL_API_KEY = os.getenv("BFL_API_KEY", "test-key")
-os.environ["BFL_ENV"] = "dev"  # Set environment to dev mode for testing
-
-def test_client_initialization():
-    client = BFLClient(api_key="test-key")
-    assert client.api_key == "test-key"
-    assert client.base_url == "https://api.bfl.ai"
-    assert client.timeout == 30
-
-def test_client_custom_base_url():
-    client = BFLClient(api_key="test-key", base_url="https://api.bfl.ai")
-    assert client.base_url == "https://api.bfl.ai"
-
-def test_client_headers():
-    client = BFLClient(api_key="test-key")
-    headers = client.session.headers
-    assert headers["X-Key"] == "test-key"
-    assert headers["Content-Type"] == "application/json"
-    assert headers["Accept"] == "application/json"
-
-def test_polling_url_mapping():
-    """Test that polling URLs are properly stored and retrieved."""
-    client = BFLClient(api_key=BFL_API_KEY)
-    
-    # Test that mapping starts empty
-    assert len(client._task_polling_urls) == 0
-    
-    # Create a test task
-    inputs = {
-        "prompt": "test prompt",
-        "width": 512,
-        "height": 512,
-        "output_format": "jpeg"
-    }
-    
-    config = ClientConfig(sync=False)  # Use async to avoid polling
-    response = client.generate("flux-pro-1.1", inputs, config)
-    
-    # Verify that polling URL was stored
-    assert response.id in client._task_polling_urls
-    stored_url, timestamp = client._task_polling_urls[response.id]
-    assert stored_url == response.polling_url
-    assert timestamp > 0
-    
-    # Test that the correct polling endpoint is returned
-    endpoint = client._get_polling_endpoint(response.id)
-    assert endpoint == response.polling_url
-    
-    # Test manual cleanup
-    client.clear_polling_urls()
-    assert len(client._task_polling_urls) == 0
-
-def test_generate_flux_pro_1_1_no_config():
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "prompt": "a beautiful sunset over mountains, digital art style",
-        "width": 1024,
-        "height": 768,
-        "output_format": "jpeg"
-    }
-
-    config = ClientConfig()
-
-    # Call generate with dictionary and config
-    response = client.generate("flux-pro-1.1", inputs)
-    print(f"Response: {response}")
-
-    if config.sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
-        assert response.polling_url is not None
-
-@pytest.mark.parametrize("model", ["flux-pro-1.1", "flux-pro", "flux-dev"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "prompt": "a beautiful sunset over mountains, digital art style",
-        "width": 1024,
-        "height": 768,
-        "output_format": "jpeg"
-    }
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
-        assert response.polling_url is not None
-
-@pytest.mark.parametrize("model", ["flux-pro-1.1-ultra"])
-@pytest.mark.parametrize("raw", [True, False])
-@pytest.mark.parametrize("aspect_ratio", ["16:9", "9:16"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_ultra_model(model, raw, aspect_ratio, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "prompt": "a beautiful sunset over mountains, digital art style",
-        "width": 1024,
-        "height": 768,
-        "output_format": "jpeg",
-        "raw": raw,
-        "aspect_ratio": aspect_ratio,
-    }
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
-        assert response.polling_url is not None
-
-@pytest.mark.parametrize("model", ["flux-pro-1.0-fill"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_pro_fill_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, "test_images", "image.png")
-    mask_path = os.path.join(current_dir, "test_images", "mask.png")
-
-    with open(image_path, "rb") as image_file:
-        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
-
-    with open(mask_path, "rb") as image_file:
-        mask_base64 = base64.b64encode(image_file.read()).decode("utf-8")
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "image": image_base64,
-        "mask": mask_base64,
-        "prompt": "A beautiful landscape with mountains and a lake",
-        "prompt_upsampling": True,
-        "seed": 42,
-        "safety_tolerance": 2,
-    }
-    if model == "flux-pro-1.0-fill":
-        inputs.update({"guidance": 30.0, "steps": 30})
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
-
-@pytest.mark.parametrize("model", ["flux-pro-1.0-expand"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_pro_expand_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, "test_images", "image.png")
-
-    with open(image_path, "rb") as image_file:
-        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "image": image_base64,
-        "top": 10,
-        "bottom": 0,
-        "left": 0,
-        "right": 0,
-        "prompt": "A beautiful landscape with mountains and a lake",
-        "prompt_upsampling": True,
-        "seed": 42,
-        "safety_tolerance": 2,
-    }
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
-
-@pytest.mark.parametrize("model", ["flux-pro-1.0-canny"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_pro_canny_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, "test_images", "image.png")
-
-    with open(image_path, "rb") as image_file:
-        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
-
-    # Create input as dictionary instead of model instance
-    inputs = {
-        "control_image": image_base64,
-        "prompt": "A beautiful landscape with mountains and a lake",
-        "steps": 30,
-        "prompt_upsampling": True,
-        "seed": 42,
-        "guidance": 30.0,
-        "safety_tolerance": 2,
-    }
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
+from bfl._client import BFL
+from bfl._exceptions import BFLContentModerated, BFLTaskError, BFLTimeoutError
+from bfl._jobs import Job, Result, _interpret
 
 
-@pytest.mark.parametrize("model", ["flux-pro-1.0-depth"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_pro_depth_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    image_path = os.path.join(current_dir, "test_images", "image.png")
-
-    with open(image_path, "rb") as image_file:
-        image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
-
-    # Create input as dictionary instead of model instance
-    inputs =  {
-            "control_image": image_base64,
-            "prompt": "A beautiful landscape with mountains and a lake",
-            "steps": 30,
-            "prompt_upsampling": True,
-            "seed": 42,
-            "guidance": 15.0,
-            "safety_tolerance": 2,
-        }
-
-    config = ClientConfig(sync=sync)
-
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
-
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
+def test_interpret_ready():
+    ready, data = _interpret({"id": "t", "status": "Ready", "result": {"sample": "u"}})
+    assert ready is True
+    assert data["result"]["sample"] == "u"
 
 
-@pytest.mark.parametrize("model", ["flux-kontext-pro"])
-@pytest.mark.parametrize("sync", [False, True])
-def test_generate_flux_kontext_pro_model(model, sync):
-    print(f"Using API key: {BFL_API_KEY}")
-    client = BFLClient(api_key=BFL_API_KEY)
+def test_interpret_pending():
+    ready, _ = _interpret({"id": "t", "status": "Pending"})
+    assert ready is False
 
-    inputs = {
-        "prompt": "Make the 2 animals in a scene having breakfast together",
-        "input_image": "tests/inputs/test_image_1.jpeg",
-        "input_image_2": "tests/inputs/test_image_2.jpeg",
-        "aspect_ratio": "16:9",
-        "output_format": "png",
-        "seed": 42,
-        "safety_tolerance": 2,
-        "prompt_upsampling": True,
-    }
 
-    config = ClientConfig(sync=sync)
+def test_interpret_content_moderated():
+    with pytest.raises(BFLContentModerated) as exc:
+        _interpret({"id": "t", "status": "Content Moderated"})
+    assert exc.value.stage == "content"
 
-    # Call generate with dictionary and config
-    response = client.generate(model, inputs, config)
-    print(f"Response: {response}")
 
-    if sync:
-        assert response.id is not None
-        assert response.result is not None
-    else:
-        assert response.id is not None
+def test_interpret_request_moderated():
+    with pytest.raises(BFLContentModerated) as exc:
+        _interpret({"id": "t", "status": "Request Moderated"})
+    assert exc.value.stage == "request"
+
+
+def test_interpret_error():
+    with pytest.raises(BFLTaskError):
+        _interpret({"id": "t", "status": "Error"})
+
+
+def test_interpret_unknown_status_raises():
+    """An unrecognized status must surface, not poll forever."""
+    with pytest.raises(BFLTaskError) as exc:
+        _interpret({"id": "t", "status": "Frobnicating"})
+    assert exc.value.status == "Frobnicating"
+
+
+def test_interpret_missing_status_raises():
+    with pytest.raises(BFLTaskError):
+        _interpret({"id": "t"})
+
+
+def test_async_result_forbids_blocking_accessors():
+    """A result from an async job must refuse blocking sync I/O."""
+    from bfl._exceptions import BFLError
+
+    result = Result(id="t", raw={"sample": "https://img/x.png"}, _async=True)
+    # URL/metadata are fine (no I/O)...
+    assert result.url == "https://img/x.png"
+    # ...but blocking downloads are refused with a pointer to the async variant.
+    with pytest.raises(BFLError, match="async"):
+        result.save("/tmp/should-not-write.png")
+    with pytest.raises(BFLError, match="async"):
+        result.bytes()
+
+
+def test_job_wait_polls_until_ready(client):
+    transport = client._transport
+    transport.queue(
+        {"id": "abc", "polling_url": "/v1/get_result?id=abc", "cost": 5.0},  # submit
+        {"id": "abc", "status": "Pending"},
+        {"id": "abc", "status": "Pending"},
+        {
+            "id": "abc",
+            "status": "Ready",
+            "result": {"sample": "https://img/x.png", "seed": 7},
+        },
+    )
+    job = client.flux2.pro.submit("a fox", width=1024, height=1024)
+    assert isinstance(job, Job)
+    assert job.cost == 5.0
+    result = job.wait(poll_interval=0)
+    assert isinstance(result, Result)
+    assert result.url == "https://img/x.png"
+    assert result.seed == 7
+
+
+def test_job_wait_raises_on_moderation(client):
+    client._transport.queue(
+        {"id": "abc", "polling_url": "/v1/get_result?id=abc"},
+        {"id": "abc", "status": "Content Moderated"},
+    )
+    job = client.flux2.pro.submit("a fox")
+    with pytest.raises(BFLContentModerated):
+        job.wait(poll_interval=0)
+
+
+def test_job_wait_timeout(client):
+    client._transport.queue(
+        {"id": "abc", "polling_url": "/v1/get_result?id=abc"},
+        {"id": "abc", "status": "Pending"},
+    )
+    job = client.flux2.pro.submit("a fox")
+    with pytest.raises(BFLTimeoutError):
+        job.wait(timeout=0, poll_interval=0)
+
+
+def test_generate_convenience(client):
+    client._transport.queue(
+        {"id": "abc", "polling_url": "/v1/get_result?id=abc"},
+        {"id": "abc", "status": "Ready", "result": {"sample": "https://img/y.png"}},
+    )
+    result = client.generate("a fox", poll_interval=0)
+    assert result.url == "https://img/y.png"
+    # default model is flux-2-pro
+    submit_call = client._transport.calls[0]
+    assert submit_call["url"] == "/v1/flux-2-pro"
+
+
+def test_submit_records_correct_path(client):
+    client._transport.queue({"id": "abc", "polling_url": "/v1/get_result?id=abc"})
+    client.flux2.max.submit("a fox")
+    assert client._transport.calls[0]["url"] == "/v1/flux-2-max"
+
+
+def test_estimate_cost_rejects_non_flux2(client):
+    from bfl._exceptions import BFLValidationError
+
+    with pytest.raises(BFLValidationError):
+        client.estimate_cost("flux-pro-1.1")
+
+
+def test_credits(client):
+    client._transport.queue({"credits": 1234.5})
+    assert client.credits() == 1234.5
+
+
+def test_unknown_model_raises():
+    from bfl._exceptions import BFLValidationError
+
+    c = BFL(api_key="bfl_" + "x" * 32)
+    with pytest.raises(BFLValidationError):
+        c.model("flux-9000")
+
+
+def test_missing_api_key_raises(monkeypatch):
+    from bfl._exceptions import BFLConfigError
+
+    monkeypatch.delenv("BFL_API_KEY", raising=False)
+    with pytest.raises(BFLConfigError):
+        BFL()
