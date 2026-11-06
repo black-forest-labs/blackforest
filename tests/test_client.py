@@ -44,6 +44,13 @@ def test_interpret_error():
         _interpret({"id": "t", "status": "Error"})
 
 
+def test_interpret_no_card_generated_is_a_known_error():
+    """In the StatusResponse enum: raise as a task error, not as unrecognized."""
+    with pytest.raises(BFLTaskError) as exc:
+        _interpret({"id": "t", "status": "No Card Generated"})
+    assert "unrecognized" not in str(exc.value)
+
+
 def test_interpret_unknown_status_raises():
     """An unrecognized status must surface, not poll forever."""
     with pytest.raises(BFLTaskError) as exc:

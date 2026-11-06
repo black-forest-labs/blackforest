@@ -30,12 +30,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from ._transport import AsyncTransport, Transport
 
-# Terminal task states reported by GET /v1/get_result (StatusResponse enum).
+# Task states reported by GET /v1/get_result (StatusResponse enum).
 _READY = "Ready"
 _PENDING = "Pending"
 _TERMINAL_OK = {_READY}
 _TERMINAL_MODERATED = {"Content Moderated": "content", "Request Moderated": "request"}
-_TERMINAL_ERROR = {"Error", "Task not found"}
+_TERMINAL_ERROR = {"Error", "Task not found", "No Card Generated"}
 # Statuses that mean "not finished yet". FLUX 3 reports Reasoning, then
 # Generating, before Ready. Anything else unrecognized is surfaced rather than
 # polled forever.
@@ -48,9 +48,9 @@ def _interpret(payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
     ``Ready`` returns ``(True, payload)``. In-progress states (``Pending``,
     ``Reasoning``, ``Generating``) return ``(False, payload)`` so the caller
     keeps polling. Moderation and error states raise the matching typed
-    exception immediately. Any *unrecognized* status is
-    treated as a failure and raised — never polled to the timeout — so a new or
-    malformed status surfaces loudly instead of hanging.
+    exception immediately. Any *unrecognized* status is treated as a failure
+    and raised — never polled to the timeout — so a new or malformed status
+    surfaces loudly instead of hanging.
     """
     status = payload.get("status")
     task_id = payload.get("id")

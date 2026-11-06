@@ -50,6 +50,9 @@ A ground-up rework of the client. The 0.1.x `BFLClient` interface still works
 ### Fixed
 - Terminal task states (moderation/error) raise immediately instead of polling
   to the timeout (the 0.1.x hang).
+- FLUX 3 `Reasoning` and `Generating` poll states are treated as in-progress
+  instead of raising as unrecognized, and `No Card Generated` raises as a known
+  task error.
 - `prompt_upsampling` is correctly translated per FLUX.2 model (`disable_pup`
   for pro/max, native for flex, dropped for klein) instead of being ignored.
 - `import bfl` no longer requires Pillow; it is an optional extra
