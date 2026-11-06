@@ -74,7 +74,8 @@ is re-exported from `__init__.py`.
 - **`_jobs.py`** — `Job`/`AsyncJob` (poll lifecycle, `wait` with progress
   callbacks) and `Result` (`.url`, `.seed`, `.prompt`, `.save`/`.bytes`/`.image`
   sync, `.asave`/`.abytes` async). `_interpret` maps the API status enum:
-  `Ready`→done, `Pending`→keep polling, moderation/error/**unknown**→raise a
+  `Ready`→done, `Pending`/`Reasoning`/`Generating`→keep polling,
+  moderation/error/**unknown**→raise a
   typed exception immediately (never poll to timeout). A `Result` from an async
   job sets `_async=True` and refuses the blocking sync accessors.
 - **`_models.py`** — fresh, correct typed params for FLUX.2 (`Flux2Params`,
@@ -132,8 +133,10 @@ The live API contract is in the hoellental monorepo
   (server maps them to `input_image`/`input_image_2`). The old
   `/v1/flux-pro-1.0-fill|expand|canny|depth` tools are NOT surfaced by this SDK.
 - Auth header is `x-key` (lowercase).
-- `get_result` status enum: `Pending`, `Ready`, `Error`, `Content Moderated`,
-  `Request Moderated`, `Task not found`.
+- `get_result` status enum: `Pending`, `Reasoning`, `Generating`, `Ready`,
+  `Error`, `Content Moderated`, `Request Moderated`, `Task not found`,
+  `No Card Generated`. FLUX 3 reports `Reasoning` then `Generating` before
+  `Ready`.
 - Reference-image limits: klein 4B = 4, klein 9B = 5, pro/max/flex = 8.
 - `/v1/pricing` may 404 in production (not yet deployed); `estimate_cost`
   degrades to a clear message.

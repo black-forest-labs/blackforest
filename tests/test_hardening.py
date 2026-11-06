@@ -77,6 +77,21 @@ async def test_async_generate_polls_to_ready():
 
 
 @pytest.mark.asyncio
+async def test_async_generate_polls_through_flux3_states():
+    c = _async_client()
+    c._transport.queue(
+        {"id": "t1", "polling_url": "/v1/get_result?id=t1"},
+        {"id": "t1", "status": "Reasoning"},
+        {"id": "t1", "status": "Generating"},
+        {"id": "t1", "status": "Ready", "result": {"sample": "https://d/x.png"}},
+    )
+    result = await c.flux2.pro.generate("a fox", poll_interval=0.0)
+    assert result.url == "https://d/x.png"
+    assert result.seed is None
+    await c.aclose()
+
+
+@pytest.mark.asyncio
 async def test_async_result_blocks_sync_accessors():
     """A result from the async client must refuse blocking sync I/O."""
     c = _async_client()
