@@ -20,6 +20,13 @@ def test_interpret_pending():
     assert ready is False
 
 
+@pytest.mark.parametrize("status", ["Reasoning", "Generating"])
+def test_interpret_flux3_in_progress_states(status):
+    """FLUX 3 reports Reasoning then Generating before Ready; keep polling."""
+    ready, _ = _interpret({"id": "t", "status": status})
+    assert ready is False
+
+
 def test_interpret_content_moderated():
     with pytest.raises(BFLContentModerated) as exc:
         _interpret({"id": "t", "status": "Content Moderated"})
@@ -82,6 +89,27 @@ def test_job_wait_polls_until_ready(client):
     assert isinstance(result, Result)
     assert result.url == "https://img/x.png"
     assert result.seed == 7
+
+
+def test_job_wait_polls_through_flux3_states(client):
+    client._transport.queue(
+        {"id": "abc", "polling_url": "/v1/get_result?id=abc"},
+        {"id": "abc", "status": "Pending"},
+        {"id": "abc", "status": "Reasoning"},
+        {"id": "abc", "status": "Generating"},
+        # FLUX 3 results carry no seed.
+        {
+            "id": "abc",
+            "status": "Ready",
+            "result": {"sample": "https://img/x.png", "prompt": "a fox"},
+        },
+    )
+    job = client.flux2.pro.submit("a fox")
+    seen = []
+    result = job.wait(poll_interval=0, on_progress=lambda p: seen.append(p["status"]))
+    assert result.url == "https://img/x.png"
+    assert result.seed is None
+    assert seen == ["Pending", "Reasoning", "Generating", "Ready"]
 
 
 def test_job_wait_raises_on_moderation(client):

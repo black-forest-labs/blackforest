@@ -36,17 +36,19 @@ _PENDING = "Pending"
 _TERMINAL_OK = {_READY}
 _TERMINAL_MODERATED = {"Content Moderated": "content", "Request Moderated": "request"}
 _TERMINAL_ERROR = {"Error", "Task not found"}
-# The only status that means "not finished yet". Anything else unrecognized is
-# surfaced rather than polled forever.
-_IN_PROGRESS = {_PENDING}
+# Statuses that mean "not finished yet". FLUX 3 reports Reasoning, then
+# Generating, before Ready. Anything else unrecognized is surfaced rather than
+# polled forever.
+_IN_PROGRESS = {_PENDING, "Reasoning", "Generating"}
 
 
 def _interpret(payload: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
     """Inspect a poll response. Returns ``(is_ready, payload)`` or raises.
 
-    ``Ready`` returns ``(True, payload)``. ``Pending`` returns ``(False,
-    payload)`` so the caller keeps polling. Moderation and error states raise
-    the matching typed exception immediately. Any *unrecognized* status is
+    ``Ready`` returns ``(True, payload)``. In-progress states (``Pending``,
+    ``Reasoning``, ``Generating``) return ``(False, payload)`` so the caller
+    keeps polling. Moderation and error states raise the matching typed
+    exception immediately. Any *unrecognized* status is
     treated as a failure and raised — never polled to the timeout — so a new or
     malformed status surfaces loudly instead of hanging.
     """
